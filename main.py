@@ -4,6 +4,8 @@ import requests
 import os
 from dotenv import load_dotenv
 
+import db
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -12,9 +14,7 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
 WHATSAPP_PHONE_ID = os.getenv("WHATSAPP_PHONE_ID")
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN", "ketooficial2024")
-
-# Historial de conversacion por usuario (en memoria)
-conversations = {}
+HISTORY_LIMIT = int(os.getenv("HISTORY_LIMIT", "10"))
 
 SALES_PROMPT = """Eres "Ale", asistente de ventas de la Nutricionista Alejandra Varela de Ketooficial.cl.
 Tu objetivo es cerrar ventas de planes nutricionales de forma empática y en lenguaje chileno.
@@ -50,26 +50,28 @@ Si el cliente pregunta algo de nutrición/keto, responde brevemente y redirige a
 
 client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
+db.init_db()
+
 
 def get_claude_response(user_id, user_message):
-    if user_id not in conversations:
-        conversations[user_id] = []
-
-    conversations[user_id].append({"role": "user", "content": user_message})
-
-    # Mantener solo los últimos 10 mensajes para controlar costos
-    if len(conversations[user_id]) > 10:
-        conversations[user_id] = conversations[user_id][-10:]
+    db.save_message(user_id, "user", user_message)
+    history = db.get_conversation(user_id, limit=HISTORY_LIMIT)
 
     response = client.messages.create(
-        model="claude-haiku-4-5-20251001",  # Modelo más barato y rápido
+        model="claude-haiku-4-5-20251001",
         max_tokens=400,
-        system=SALES_PROMPT,
-        messages=conversations[user_id],
+        system=[
+            {
+                "type": "text",
+                "text": SALES_PROMPT,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
+        messages=history,
     )
 
     assistant_message = response.content[0].text
-    conversations[user_id].append({"role": "assistant", "content": assistant_message})
+    db.save_message(user_id, "assistant", assistant_message)
     return assistant_message
 
 
