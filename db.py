@@ -33,6 +33,60 @@ def init_db(path=None):
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_messages_user ON messages(user_id, id)"
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                user_id TEXT PRIMARY KEY,
+                ctwa_clid TEXT,
+                first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sales (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                value_clp INTEGER NOT NULL,
+                event_id TEXT NOT NULL UNIQUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+
+
+def upsert_user_referral(user_id, ctwa_clid, path=None):
+    """Guarda el ctwa_clid de un usuario solo la primera vez (no sobrescribe)."""
+    with _connect(path) as conn:
+        conn.execute(
+            """
+            INSERT INTO users (user_id, ctwa_clid) VALUES (?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                ctwa_clid = COALESCE(users.ctwa_clid, excluded.ctwa_clid)
+            """,
+            (user_id, ctwa_clid),
+        )
+
+
+def get_user_referral(user_id, path=None):
+    with _connect(path) as conn:
+        row = conn.execute(
+            "SELECT ctwa_clid FROM users WHERE user_id = ?", (user_id,)
+        ).fetchone()
+    return row["ctwa_clid"] if row else None
+
+
+def record_sale(user_id, value_clp, event_id, path=None):
+    """Inserta venta. Retorna False si event_id ya existe (deduplicación)."""
+    with _connect(path) as conn:
+        try:
+            conn.execute(
+                "INSERT INTO sales (user_id, value_clp, event_id) VALUES (?, ?, ?)",
+                (user_id, value_clp, event_id),
+            )
+            return True
+        except sqlite3.IntegrityError:
+            return False
 
 
 def save_message(user_id, role, content, path=None):

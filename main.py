@@ -2,6 +2,10 @@ from flask import Flask, request, jsonify
 import anthropic
 import requests
 import os
+import hashlib
+import hmac
+import time
+import uuid
 from dotenv import load_dotenv
 
 import db
@@ -15,6 +19,10 @@ WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
 WHATSAPP_PHONE_ID = os.getenv("WHATSAPP_PHONE_ID")
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN", "ketooficial2024")
 HISTORY_LIMIT = int(os.getenv("HISTORY_LIMIT", "10"))
+
+META_DATASET_ID = os.getenv("META_DATASET_ID")
+META_CAPI_TOKEN = os.getenv("META_CAPI_TOKEN")
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN")
 
 SALES_PROMPT = """Eres "Ale", asistente de ventas de la Nutricionista Alejandra Varela de Ketooficial.cl.
 Tu objetivo es cerrar ventas de planes nutricionales de forma empática y en lenguaje chileno.
@@ -75,6 +83,44 @@ def get_claude_response(user_id, user_message):
     return assistant_message
 
 
+def send_meta_purchase_event(user_id, value_clp, event_id):
+    """Manda evento Purchase a Meta Conversions API para optimizar ads por compras.
+
+    user_id es el número de teléfono del cliente (formato E.164 sin '+').
+    value_clp es el monto en CLP. event_id evita doble conteo si se reenvía.
+    """
+    if not META_DATASET_ID or not META_CAPI_TOKEN:
+        print("⚠️  META_DATASET_ID o META_CAPI_TOKEN no configurados — skip CAPI")
+        return None
+
+    phone_hash = hashlib.sha256(user_id.encode("utf-8")).hexdigest()
+    ctwa_clid = db.get_user_referral(user_id)
+
+    user_data = {"ph": [phone_hash]}
+    if ctwa_clid:
+        user_data["ctwa_clid"] = ctwa_clid
+
+    payload = {
+        "data": [
+            {
+                "event_name": "Purchase",
+                "event_time": int(time.time()),
+                "action_source": "business_messaging",
+                "messaging_channel": "whatsapp",
+                "event_id": event_id,
+                "user_data": user_data,
+                "custom_data": {"currency": "CLP", "value": value_clp},
+            }
+        ]
+    }
+    url = f"https://graph.facebook.com/v18.0/{META_DATASET_ID}/events"
+    response = requests.post(
+        url, params={"access_token": META_CAPI_TOKEN}, json=payload
+    )
+    print(f"[CAPI] Purchase {event_id} → {response.status_code} {response.text}")
+    return response.json()
+
+
 def send_whatsapp_message(to, message):
     url = f"https://graph.facebook.com/v18.0/{WHATSAPP_PHONE_ID}/messages"
     headers = {
@@ -118,6 +164,14 @@ def webhook():
         message = value["messages"][0]
         from_number = message["from"]
 
+        referral = message.get("referral") or {}
+        ctwa_clid = referral.get("ctwa_clid")
+        if ctwa_clid:
+            db.upsert_user_referral(from_number, ctwa_clid)
+            print(f"[CTWA] {from_number} viene del ad clid={ctwa_clid}")
+        else:
+            db.upsert_user_referral(from_number, None)
+
         if message["type"] == "text":
             user_message = message["text"]["body"]
             print(f"[{from_number}]: {user_message}")
@@ -131,6 +185,36 @@ def webhook():
         print(f"Error procesando mensaje: {e}")
 
     return jsonify({"status": "ok"})
+
+
+@app.route("/admin/sale", methods=["POST"])
+def admin_sale():
+    """Marca una venta confirmada y dispara el evento Purchase a Meta CAPI.
+
+    Body JSON: { "user_id": "56912345678", "value_clp": 30000, "event_id": "opcional" }
+    Header: Authorization: Bearer <ADMIN_TOKEN>
+    """
+    if not ADMIN_TOKEN:
+        return jsonify({"error": "ADMIN_TOKEN no configurado"}), 500
+
+    auth = request.headers.get("Authorization", "")
+    expected = f"Bearer {ADMIN_TOKEN}"
+    if not hmac.compare_digest(auth, expected):
+        return jsonify({"error": "unauthorized"}), 401
+
+    data = request.get_json(silent=True) or {}
+    user_id = data.get("user_id")
+    value_clp = data.get("value_clp")
+    if not user_id or not isinstance(value_clp, int):
+        return jsonify({"error": "user_id y value_clp (int) son obligatorios"}), 400
+
+    event_id = data.get("event_id") or f"sale-{uuid.uuid4()}"
+    inserted = db.record_sale(user_id, value_clp, event_id)
+    if not inserted:
+        return jsonify({"status": "duplicate", "event_id": event_id}), 200
+
+    meta_response = send_meta_purchase_event(user_id, value_clp, event_id)
+    return jsonify({"status": "ok", "event_id": event_id, "meta": meta_response})
 
 
 @app.route("/", methods=["GET"])
