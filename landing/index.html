@@ -67,6 +67,11 @@
     padding:7px 18px;border-radius:50px;font-weight:600;
     font-size:.85rem;letter-spacing:.5px;margin-bottom:18px;backdrop-filter:blur(4px);
   }
+  .hero-photo{
+    width:160px;height:160px;border-radius:50%;object-fit:cover;
+    border:5px solid rgba(255,255,255,.85);box-shadow:0 10px 30px rgba(0,0,0,.18);
+    margin-bottom:20px;background:rgba(255,255,255,.15);
+  }
   header h1{font-size:2.55rem;font-weight:800;line-height:1.15;margin-bottom:8px}
   header h1 .script{font-size:3.4rem;color:var(--yellow);display:block;line-height:1}
   header .sub{font-size:1.2rem;max-width:620px;margin:18px auto 30px;opacity:.97}
@@ -118,7 +123,7 @@
   .pricing{background:var(--ink);color:#fff}
   .pricing h2{color:#fff}
   .pricing .lead{color:#e9d4e4}
-  .plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;max-width:760px;margin:0 auto}
+  .plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:24px;max-width:980px;margin:0 auto}
   .plan{background:#fff;color:var(--ink);border-radius:var(--radius);padding:32px 26px;text-align:center;position:relative}
   .plan.best{border:3px solid var(--yellow);transform:scale(1.04)}
   .plan .tag{position:absolute;top:-14px;left:50%;transform:translateX(-50%);
@@ -167,6 +172,7 @@
 <!-- ===================== HERO ===================== -->
 <header>
   <div class="wrap">
+    <img class="hero-photo" src="ale.jpg" alt="Ale, Nutricionista Keto" onerror="this.style.display='none'" />
     <span class="badge">🥑 Programa Keto + Ayuno · 100% Online</span>
     <h1>Hola, soy Ale
       <span class="script">Nutricionista Keto</span>
@@ -239,17 +245,26 @@
     <p class="lead">Cupos limitados cada mes — atiendo personalmente a cada paciente.</p>
     <div class="plans">
       <div class="plan">
-        <h3>1 Mes</h3>
-        <div class="price">$97<small> USD</small></div>
-        <p class="desc">Plan completo + acompañamiento diario por 30 días.</p>
-        <a class="btn btn-wa" href="https://wa.me/56936475173?text=Hola%20Ale%2C%20quiero%20el%20plan%20de%201%20mes%20%F0%9F%A5%91" target="_blank" rel="noopener">Lo quiero</a>
+        <h3>Etapa 1</h3>
+        <p class="desc" style="margin:4px 0 0">Quema de grasa · 1 mes</p>
+        <div class="price" style="margin-top:10px">$97<small> USD</small></div>
+        <p class="desc">Keto puro para empezar a bajar de peso rápido, con mi acompañamiento diario.</p>
+        <a class="btn btn-wa" href="https://wa.me/56936475173?text=Hola%20Ale%2C%20quiero%20el%20plan%20Etapa%201%20%F0%9F%A5%91" target="_blank" rel="noopener">Lo quiero</a>
       </div>
       <div class="plan best">
         <span class="tag">⭐ EL MÁS PEDIDO</span>
-        <h3>3 Meses</h3>
-        <div class="price">$297<small> USD</small></div>
-        <p class="desc">Transformación completa. El tiempo ideal para resultados que duran.</p>
-        <a class="btn btn-wa" href="https://wa.me/56936475173?text=Hola%20Ale%2C%20quiero%20el%20plan%20de%203%20meses%20%F0%9F%94%A5" target="_blank" rel="noopener">Lo quiero</a>
+        <h3>Etapas 1 + 2 + 3</h3>
+        <p class="desc" style="margin:4px 0 0">Transformación completa · 3 meses</p>
+        <div class="price" style="margin-top:10px">$297<small> USD</small></div>
+        <p class="desc">El camino completo: bajas de peso y aprendes a mantenerlo de por vida, sin rebote.</p>
+        <a class="btn btn-wa" href="https://wa.me/56936475173?text=Hola%20Ale%2C%20quiero%20la%20transformaci%C3%B3n%20completa%20(3%20meses)%20%F0%9F%94%A5" target="_blank" rel="noopener">Lo quiero</a>
+      </div>
+      <div class="plan">
+        <h3>Etapas 1 + 2</h3>
+        <p class="desc" style="margin:4px 0 0">Quema + reintroducción · 2 meses</p>
+        <div class="price" style="margin-top:10px">$187<small> USD</small></div>
+        <p class="desc">Bajas de peso y empiezas a comer normal de nuevo sin volver a subir.</p>
+        <a class="btn btn-wa" href="https://wa.me/56936475173?text=Hola%20Ale%2C%20quiero%20el%20plan%20Etapas%201%20y%202%20%F0%9F%A5%97" target="_blank" rel="noopener">Lo quiero</a>
       </div>
     </div>
   </div>
